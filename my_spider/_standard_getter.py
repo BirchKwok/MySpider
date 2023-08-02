@@ -7,6 +7,7 @@ class Getter:
     def __init__(self) -> None:
         self.response = None
         self.manual_cookies = None
+        self.last_status_code = None
     
     def manual_cookies(self, cookies):
         if isinstance(cookies, dict):
@@ -26,6 +27,8 @@ class Getter:
 
         if int(self.response.status_code) != 200:
             print("status_code:", self.response.status_code)
+        
+        self.last_status_code = self.response.status_code
         
         return self.response.status_code, self.response
     
