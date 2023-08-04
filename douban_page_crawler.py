@@ -71,75 +71,80 @@ def crawler(driver, drama_list, page_limit=9):
         )
 
         wait_for_show_up(
-            driver, by_method=By.XPATH, 
-            page_path="//input[@type='submit' and @value='搜索']", 
-            click=True
+                driver, by_method=By.XPATH, 
+                page_path="//input[@type='submit' and @value='搜索']", 
+                click=True
         )
 
-        for e in zip(
-            wait_for_show_up(
-                driver, by_method=By.XPATH, 
-                # 找到和给定剧集匹配的标签
-                page_path=f"//a[@class='title-text' and contains(text(), {d})]", index=-1
-            ), 
-            wait_for_show_up(
-                driver, by_method=By.XPATH, 
-                # 限制是中国香港的剧集
-                page_path=f"//div[@class='meta abstract' and contains(text(), '中国香港')]", index=-1
-            )
-        ):
-            if e[0] and e[1]:
-                # 获取评分
-                rating_dict[d] = wait_for_show_up(
+        if d:=wait_for_show_up(
                     driver, by_method=By.XPATH, 
-                    page_path="//span[@class='rating_nums']", 
-                ).text
-
-                e[0].click() # 点击进入详情页
-
-                # 点击进入讨论区
-                wait_for_show_up(
+                    # 找到和给定剧集匹配的标签
+                    page_path=f"//a[@class='title-text' and contains(text(), {d})]", index=-1
+                ) is not None:
+            
+            if drama_from:=wait_for_show_up(
                     driver, by_method=By.XPATH, 
                     # 限制是中国香港的剧集
-                    page_path=f"//h2/i[contains(text(), '短评')]/following-sibling::span[@class='pl']/a[contains(text(), '全部')]",
-                    click=True
-                )
+                    page_path=f"//div[@class='meta abstract' and contains(text(), '中国香港')]", index=-1
+                ) == [None]:
+                drama_from = range(len(d))
+            
+            for e in zip(
+                d, 
+                drama_from
+            ):
+                if e[0] and e[1]:
+                    # 获取评分
+                    rating_dict[d] = wait_for_show_up(
+                        driver, by_method=By.XPATH, 
+                        page_path="//span[@class='rating_nums']", 
+                    ).text
 
-                # 采集所有的短评
-                short_coment = []
+                    e[0].click() # 点击进入详情页
 
-                page_cnt = 0
-                while page_cnt <= page_limit:
-                    time.sleep(np.random.randint(1, 4)) # 随机休眠
-                    current_elements = wait_for_show_up(
-                                            driver, by_method=By.XPATH, 
-                                            page_path=f"//span[@class='short']",
-                                            index=-1
-                                        )
-                    short_coment.extend([i.text for i in current_elements])
-                    # 点击后页
-                    if wait_for_show_up(
-                            driver, by_method=By.XPATH, 
-                            page_path=f"//a[@class='next' and text()='后页 >']",
-                            click=True, duration=1
-                    ) is not None:
-                        page_cnt += 1
-                    else:
-                        break
-                        
-                short_coment_dict[d] = short_coment
+                    # 点击进入讨论区
+                    wait_for_show_up(
+                        driver, by_method=By.XPATH, 
+                        # 限制是中国香港的剧集
+                        page_path=f"//h2/i[contains(text(), '短评')]/following-sibling::span[@class='pl']/a[contains(text(), '全部')]",
+                        click=True
+                    )
 
-                break
+                    # 采集所有的短评
+                    short_coment = []
 
-        # 清空搜索框
-        wait_for_show_up(
-            driver, by_method=By.XPATH, 
-            page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
-        ).clear()
+                    page_cnt = 0
+                    while page_cnt <= page_limit:
+                        time.sleep(np.random.randint(1, 4)) # 随机休眠
+                        current_elements = wait_for_show_up(
+                                                driver, by_method=By.XPATH, 
+                                                page_path=f"//span[@class='short']",
+                                                index=-1
+                                            )
+                        short_coment.extend([i.text for i in current_elements])
+                        # 点击后页
+                        if wait_for_show_up(
+                                driver, by_method=By.XPATH, 
+                                page_path=f"//a[@class='next' and text()='后页 >']",
+                                click=True, duration=1
+                        ) is not None:
+                            page_cnt += 1
+                        else:
+                            break
+                            
+                    short_coment_dict[d] = short_coment
+
+                    break
+        else:
+            # 清空搜索框
+            wait_for_show_up(
+                driver, by_method=By.XPATH, 
+                page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
+            ).clear()
     
     driver.quit()
-    print(rating_dict)
-    print(short_coment_dict)
+
+    return rating_dict, short_coment_dict
 
 
 if __name__ == '__main__':

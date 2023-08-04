@@ -1,3 +1,5 @@
+from ._common_config import *
+
 # 当前所有可用浏览器名称
 available_browsers = [
     "Chrome", "Firefox", "Opera", "Edge", "Chromium", "Brave", "Vivaldi", 
@@ -15,7 +17,6 @@ def get_cookies(browser_name=None, domain_name=''):
         None, *available_browsers
     ]
 
-    import browser_cookie3
     browsers = {
             "Chrome": browser_cookie3.chrome,
             "Firefox": browser_cookie3.firefox,

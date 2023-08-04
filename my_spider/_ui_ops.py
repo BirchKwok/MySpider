@@ -4,7 +4,8 @@ from ._common_config import *
 def get_driver(
         name='Chrome', 
         page_load_strategy='normal', 
-        use_manager=True
+        use_manager=True,
+        executable_path=None
 ):
     assert name in ['Chrome', 'Edge']
     options = (edge_options(), chrome_options())[name == 'Chrome']
@@ -18,11 +19,14 @@ def get_driver(
             service = service_cls(manager_cls.install())
             driver = driver_cls(service=service, options=options)
         except:
-            path = ('./msedgedriver', './chromedriver')[name == 'Chrome']
-            service = service_cls(executable_path=path)
-            driver = driver_cls(service=service, options=options)
-    else:
-        path = ('./msedgedriver', './chromedriver')[name == 'Chrome']
+            use_manager = False
+            
+    if not use_manager:
+        path = ('msedgedriver', 'chromedriver')[name == 'Chrome']
+            # 如果指定可执行文件路径，就覆盖path变量
+        if executable_path is not None:
+            path = executable_path
+
         service = service_cls(executable_path=path)
         driver = driver_cls(service=service, options=options)
         

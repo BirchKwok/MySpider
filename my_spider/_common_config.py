@@ -26,3 +26,5 @@ from Crypto.Cipher import AES
 import binascii
 from tqdm.auto import tqdm
 import numpy as np
+
+import browser_cookie3
