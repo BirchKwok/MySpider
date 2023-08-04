@@ -39,3 +39,13 @@ class Getter:
 
     def get_json(self, url, browser_name=None, domain_name='', cookies=None):
         return self.get(url, browser_name, domain_name, cookies=cookies)[1].json()
+
+
+def lxml_parser(html):
+    """获取DOM对象"""
+    return etree.HTML(html)
+
+
+def get_elements(dom, xpath):
+    """获取元素"""
+    return dom.xpath(xpath)

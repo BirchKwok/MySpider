@@ -1,6 +1,34 @@
 from ._common_config import *
 
 
+def get_driver(
+        name='Chrome', 
+        page_load_strategy='normal', 
+        use_manager=True
+):
+    assert name in ['Chrome', 'Edge']
+    options = (edge_options(), chrome_options())[name == 'Chrome']
+    driver_cls = (webdriver.Edge, webdriver.Chrome)[name == 'Chrome']
+    service_cls = (EdgeService, ChromeService)[name == 'Chrome']
+    manager_cls = (EdgeChromiumDriverManager(), ChromeDriverManager())[name == 'Chrome']
+
+    options.page_load_strategy = page_load_strategy
+    if use_manager:
+        try:
+            service = service_cls(manager_cls.install())
+            driver = driver_cls(service=service, options=options)
+        except:
+            path = ('./msedgedriver', './chromedriver')[name == 'Chrome']
+            service = service_cls(executable_path=path)
+            driver = driver_cls(service=service, options=options)
+    else:
+        path = ('./msedgedriver', './chromedriver')[name == 'Chrome']
+        service = service_cls(executable_path=path)
+        driver = driver_cls(service=service, options=options)
+        
+    return driver
+    
+
 def wait_for_show_up(
         driver, by_method=By.XPATH, page_path=None,
         duration=3, send_keys=None, click=False, sleep=0.5,
@@ -32,11 +60,20 @@ def wait_for_show_up(
                         actions = webdriver.ActionChains(driver)
 
                         actions.key_down(Keys.PAGE_DOWN).key_up(Keys.PAGE_DOWN).perform()
+
                     finally:
                         tok = time.time()
 
                     if (tok - tik) > duration * 100:
                         break
+    
+    if elements is None or len(elements) == 0:
+        # 如果还是找不到元素，就返回None
+        return None
+
+    if index == -1:
+        return [elements] if elements is None else elements
+
     if click:
         elements[index].click()
 
