@@ -3,7 +3,7 @@
 from my_spider import *
 from my_spider._common_config import *
 
-def maxmize_window(driver, maximize=True, open_on_top_screen=True):
+def maximize_window(driver, maximize=True, open_on_top_screen=True):
     if open_on_top_screen:
         driver.set_window_position(0, -1000)
     
@@ -58,54 +58,116 @@ def login(driver):
     return driver
 
 
-def crawler(driver, drama_list, page_limit=9):
+def dump2file(d, fp, encoding='utf-8'):
+    with open(fp, 'w', encoding=encoding) as f:
+        json.dump(d, f, ensure_ascii=False)
 
-    rating_dict = {}
-    short_coment_dict = {}
+
+def load_json(fp, encoding='utf-8'):
+    try:
+        with open(fp, 'r', encoding=encoding) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return 
+
+
+def crawler(
+    drama_list, 
+    page_limit=9, # 刮削页数
+    maximize=True, # 最大化浏览器窗口
+    open_on_top_screen=True,  # 是否在第二屏幕打开
+    storage=True, # 是否需要存储到文件
+    rating_json_path='rating.json',  # 评分存储路径
+    short_comment_json_path='short_comment.json',  # 短评存储路径
+    warm_up=False, # 是否追加到文件最后
+    use_manager=True, # 是否使用浏览器driver管理器
+    page_load_strategy='eager', # driver加载网页策略
+    new_window_each_session=False  # 是否每个会话都新开一个浏览器窗口
+):
+    """主程序"""
+    douban_url = 'https://movie.douban.com/'
+
+    if warm_up and storage:
+        rating_dict = load_json(rating_json_path) or {}
+        short_comment_dict = load_json(short_comment_json_path) or {}
+    else:
+        rating_dict = {}
+        short_comment_dict = {}
+
+    
+    def getinto():
+        driver = get_driver('Chrome', page_load_strategy=page_load_strategy, use_manager=use_manager)
+        if maximize:
+            driver = maximize_window(driver, open_on_top_screen=open_on_top_screen)
+        driver.get(douban_url)
+        return driver
+
+
+    if not new_window_each_session:
+        driver = getinto()
 
     for d in tqdm(drama_list):
+        if d in rating_dict.keys():
+            continue
+
+        if new_window_each_session:
+            driver = getinto()
+
+        time.sleep(np.random.randint(1, 3)) # 随机休眠
+
+        # 输入搜索框
         wait_for_show_up(
             driver, by_method=By.XPATH, 
             page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
             send_keys=d
         )
 
+        # 点击搜索
         wait_for_show_up(
                 driver, by_method=By.XPATH, 
                 page_path="//input[@type='submit' and @value='搜索']", 
                 click=True
         )
 
-        if d:=wait_for_show_up(
+        # 找到所有搜索结果
+        drama_es = wait_for_show_up(
                     driver, by_method=By.XPATH, 
                     # 找到和给定剧集匹配的标签
-                    page_path=f"//a[@class='title-text' and contains(text(), {d})]", index=-1
-                ) is not None:
-            
-            if drama_from:=wait_for_show_up(
+                    page_path=f"//a[@class='title-text' and contains(text(), {d})]", index='all'
+            )
+        
+        dramas_from = wait_for_show_up(
                     driver, by_method=By.XPATH, 
-                    # 限制是中国香港的剧集
-                    page_path=f"//div[@class='meta abstract' and contains(text(), '中国香港')]", index=-1
-                ) == [None]:
-                drama_from = range(len(d))
-            
-            for e in zip(
-                d, 
-                drama_from
-            ):
-                if e[0] and e[1]:
+                    # 首选是中国的剧集
+                    page_path=f"//div[@class='meta abstract']", 
+                    index='all'
+            )
+        
+        if drama_es != [None] and dramas_from != [None]:
+            for (de, df) in zip(drama_es, dramas_from):
+                de_text = de.text
+                df_text = df.text
+        
+                # 如果搜索结果不为空
+                if fuzz.partial_ratio(d, de_text) >= 75 and re.search('大陆|香港|台湾', df_text):
+                    
                     # 获取评分
-                    rating_dict[d] = wait_for_show_up(
+                    rate_element = wait_for_show_up(
                         driver, by_method=By.XPATH, 
                         page_path="//span[@class='rating_nums']", 
-                    ).text
+                    )
 
-                    e[0].click() # 点击进入详情页
+                    if rate_element is not None:
+
+                        rating_dict[d] = {de_text:rate_element.text}
+                    else:
+                        rating_dict[d] = {de_text:None}
+
+                    de.click() # 点击进入详情页
 
                     # 点击进入讨论区
                     wait_for_show_up(
                         driver, by_method=By.XPATH, 
-                        # 限制是中国香港的剧集
                         page_path=f"//h2/i[contains(text(), '短评')]/following-sibling::span[@class='pl']/a[contains(text(), '全部')]",
                         click=True
                     )
@@ -119,8 +181,11 @@ def crawler(driver, drama_list, page_limit=9):
                         current_elements = wait_for_show_up(
                                                 driver, by_method=By.XPATH, 
                                                 page_path=f"//span[@class='short']",
-                                                index=-1
+                                                index='all'
                                             )
+                        if current_elements == [None]:
+                            break
+
                         short_coment.extend([i.text for i in current_elements])
                         # 点击后页
                         if wait_for_show_up(
@@ -131,39 +196,29 @@ def crawler(driver, drama_list, page_limit=9):
                             page_cnt += 1
                         else:
                             break
-                            
-                    short_coment_dict[d] = short_coment
-
+                    
+                    short_comment_dict[d] = {de_text:short_coment}
                     break
-        else:
-            # 清空搜索框
-            wait_for_show_up(
-                driver, by_method=By.XPATH, 
-                page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
-            ).clear()
-    
-    driver.quit()
 
-    return rating_dict, short_coment_dict
+            if storage:
+                dump2file(rating_dict, rating_json_path), dump2file(short_comment_dict, short_comment_json_path)
+
+            if new_window_each_session:
+                driver.quit()
+            else:
+                wait_for_show_up(
+                    driver, by_method=By.XPATH, 
+                    page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
+                ).clear() # 清空搜索框
+
+    if not new_window_each_session:
+        driver.quit()
+
+    return rating_dict, short_comment_dict
 
 
 if __name__ == '__main__':
     drama_list = ['美丽战场', '大侠霍元甲', '射雕英雄传', '神雕侠侣']
-    driver = get_driver('Chrome', page_load_strategy='eager', use_manager=True)
-    douban_url = 'https://movie.douban.com/'
+    page_limit = 9 # 目前豆瓣限制游客只能看前十页短评
 
-    driver = maxmize_window(driver)
-
-    try:
-        driver.get(douban_url)
-        # 登录豆瓣
-        login(driver)
-
-        time.sleep(5) # 手动滑动验证码
-        page_limit = 30 # 如果登录成功就采集30页的短评
-    except:
-        # 如果登录失败，就直接使用游客模式
-        driver.get(douban_url)
-        page_limit = 9 # 目前豆瓣限制游客只能看前十页短评
-
-    crawler(driver, drama_list)
+    print(crawler(drama_list, storage=False))  # 不需要存储进硬盘

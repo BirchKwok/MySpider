@@ -20,7 +20,7 @@ def get_driver(
             driver = driver_cls(service=service, options=options)
         except:
             use_manager = False
-            
+
     if not use_manager:
         path = ('msedgedriver', 'chromedriver')[name == 'Chrome']
             # 如果指定可执行文件路径，就覆盖path变量
@@ -44,7 +44,10 @@ def wait_for_show_up(
     elements = None
 
     if not roll_to_show:
-        elements = wait.until(EC.presence_of_all_elements_located((by_method, page_path)))
+        try:
+            elements = wait.until(EC.presence_of_all_elements_located((by_method, page_path)))
+        except:
+            elements = None
     else:
         try:
             # 定位元素
@@ -72,20 +75,22 @@ def wait_for_show_up(
                         break
     
     if elements is None or len(elements) == 0:
-        # 如果还是找不到元素，就返回None
-        return None
+        if index == 'all':
+            return [None]
+        else:
+            return None
+    
+    if index == 'all':
+        return elements
+    else:
+        if click:
+            elements[index].click()
 
-    if index == -1:
-        return [elements] if elements is None else elements
+        if send_keys:
+            elements[index].send_keys(send_keys)
 
-    if click:
-        elements[index].click()
-
-    if send_keys:
-        elements[index].send_keys(send_keys)
-
-    time.sleep(sleep)
-    return elements[index]
+        time.sleep(sleep)
+        return elements[index]
 
 
 def move2center_screen(driver):
