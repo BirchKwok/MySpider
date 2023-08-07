@@ -105,6 +105,7 @@ def crawler(
         driver = getinto()
 
     for d in tqdm(drama_list):
+        d = d.strip()
         if d in rating_dict.keys():
             continue
 
@@ -131,7 +132,7 @@ def crawler(
         drama_es = wait_for_show_up(
                     driver, by_method=By.XPATH, 
                     # 找到和给定剧集匹配的标签
-                    page_path=f"//a[@class='title-text' and contains(text(), {d})]", index='all'
+                    page_path=f"//a[@class='title-text']", index='all'
             )
         
         dramas_from = wait_for_show_up(
@@ -145,9 +146,8 @@ def crawler(
             for (de, df) in zip(drama_es, dramas_from):
                 de_text = de.text
                 df_text = df.text
-        
                 # 如果搜索结果不为空
-                if fuzz.partial_ratio(d, de_text) >= 75 and re.search('大陆|香港|台湾', df_text):
+                if (fuzz.partial_ratio(d, de_text) >= 75 or fuzz.partial_ratio(d, df_text) >= 75) and re.search('大陆|香港|台湾', df_text):
                     
                     # 获取评分
                     rate_element = wait_for_show_up(

@@ -142,3 +142,13 @@ def move_element(driver, selector, click_offsets=10):
     time.sleep(1)
 
     return pyautogui.position()
+
+
+def lxml_parser(html):
+    """获取DOM对象"""
+    return etree.HTML(html)
+
+
+def get_elements(dom, xpath):
+    """获取元素"""
+    return dom.xpath(xpath)
