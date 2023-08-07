@@ -67,7 +67,7 @@ def load_json(fp, encoding='utf-8'):
     try:
         with open(fp, 'r', encoding=encoding) as f:
             return json.load(f)
-    except FileNotFoundError:
+    except:
         return 
 
 
@@ -147,7 +147,8 @@ def crawler(
                 de_text = de.text
                 df_text = df.text
                 # 如果搜索结果不为空
-                if (fuzz.partial_ratio(d, de_text) >= 75 or fuzz.partial_ratio(d, df_text) >= 75) and re.search('大陆|香港|台湾', df_text):
+                if (d in [i.strip() for i in de_text.split(' ')] or d in [i.strip() for i in df_text.split(' / ')]) \
+                        and re.search('大陆|香港|台湾', df_text):
                     
                     # 获取评分
                     rate_element = wait_for_show_up(
