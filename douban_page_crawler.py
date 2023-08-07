@@ -93,7 +93,6 @@ def crawler(
     else:
         rating_dict = {}
         short_comment_dict = {}
-
     
     def getinto():
         driver = get_driver('Chrome', page_load_strategy=page_load_strategy, use_manager=use_manager)
@@ -101,7 +100,6 @@ def crawler(
             driver = maximize_window(driver, open_on_top_screen=open_on_top_screen)
         driver.get(douban_url)
         return driver
-
 
     if not new_window_each_session:
         driver = getinto()
@@ -221,4 +219,4 @@ if __name__ == '__main__':
     drama_list = ['美丽战场', '大侠霍元甲', '射雕英雄传', '神雕侠侣']
     page_limit = 9 # 目前豆瓣限制游客只能看前十页短评
 
-    print(crawler(drama_list, storage=False))  # 不需要存储进硬盘
+    print(crawler(drama_list, page_limit=page_limit, storage=False))  # 不需要存储进硬盘
