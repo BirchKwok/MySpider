@@ -119,7 +119,7 @@ def crawler(
     for d, vd in tqdm(iter_list):
         d = d.strip()
         
-        if d in dataset['given_drama_name']:
+        if d in dataset['given_drama_name'].values:
             continue
 
         _series = {'create_time':'', 'given_drama_name':d, 'douban_drama_name':'', 'rating':'', 'short_comment':'', 'creator':'', 'stars':0}
@@ -178,7 +178,7 @@ def crawler(
                         
                         _test = de_parent.find_elements(By.XPATH, f"//span[@class='label']")[0]
                         if re.findall('\[(.*?)\]', _test.text)[0] == vd:
-                            condition = True
+                            condition = True and condition
                     except:
                         condition = False
                     
