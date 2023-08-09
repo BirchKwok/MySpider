@@ -76,6 +76,7 @@ def load_dataset(fp, encoding='utf-8'):
 
 def crawler(
     drama_list, 
+    vod_type=None,
     page_limit=9, # 刮削页数
     maximize=True, # 最大化浏览器窗口
     open_on_top_screen=True,  # 是否在第二屏幕打开
@@ -88,6 +89,10 @@ def crawler(
 ):
     """主程序"""
     douban_url = 'https://movie.douban.com/'
+
+    if vod_type is not None:
+        assert isinstance(vod_type, (list, tuple))
+        assert len(drama_list) == len(vod_type)
 
     if warm_up and storage:
         dataset = load_dataset(fpath) or \
@@ -105,7 +110,12 @@ def crawler(
     if not new_window_each_session:
         driver = getinto()
 
-    for d in tqdm(drama_list):
+    if vod_type is not None:
+        iter_list = [(i, j) for i, j in zip(drama_list, vod_type)]
+    else:
+        iter_list = [(i, None) for i in drama_list]
+
+    for d, vd in tqdm(iter_list):
         d = d.strip()
         
         if d in dataset['given_drama_name']:
@@ -136,6 +146,12 @@ def crawler(
         drama_es = wait_for_show_up(
                     driver, by_method=By.XPATH, 
                     # 找到和给定剧集匹配的标签
+                    page_path=f"//div[@class='detail']/div[@class='title']", index='all'
+            )
+        
+        drama_name = wait_for_show_up(
+                    driver, by_method=By.XPATH, 
+                    # 找到和给定剧集匹配的标签
                     page_path=f"//a[@class='title-text']", index='all'
             )
         
@@ -147,13 +163,26 @@ def crawler(
             )
         
         if drama_es != [None] and dramas_from != [None]:
-            for (de, df) in zip(drama_es, dramas_from):
+            for (de_parent, df, de) in zip(drama_es, dramas_from, drama_name):
                 de_text = de.text
                 df_text = df.text
-                # 如果搜索结果不为空
-                if (d in [i.strip() for i in de_text.split(' ')] or d in [i.strip() for i in df_text.split(' / ')]) \
-                        and re.search('大陆|香港|台湾', df_text):
+                
+                if vod_type is None:
+                    condition = (d in [i.strip() for i in de_text.split(' ')] or d in [i.strip() for i in df_text.split(' / ')]) \
+                            and re.search('大陆|香港|台湾', df_text)
+                else:
+                    try:
+                        condition = (d in [i.strip() for i in de_text.split(' ')] or d in [i.strip() for i in df_text.split(' / ')]) \
+                            and re.search('大陆|香港|台湾', df_text)
+                        
+                        _test = de_parent.find_elements(By.XPATH, f"//span[@class='label']")[0]
+                        print(_test.text)
+                        if re.findall('\[(.*?)\]', _test.text)[0] == vd:
+                            condition = True
+                    except:
+                        condition = False
                     
+                if condition:
                     # 获取评分
                     rate_element = wait_for_show_up(
                         driver, by_method=By.XPATH, 
@@ -257,4 +286,4 @@ if __name__ == '__main__':
     drama_list = ['美丽战场']
     page_limit = 9 # 目前豆瓣限制游客只能看前十页短评
 
-    print(crawler(drama_list, page_limit=page_limit, storage=True))  # 不需要存储进硬盘
+    print(crawler(drama_list, vod_type=['剧集'], page_limit=page_limit, storage=True, use_manager=False))  # 不需要存储进硬盘
