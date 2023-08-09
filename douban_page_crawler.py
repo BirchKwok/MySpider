@@ -95,8 +95,9 @@ def crawler(
         assert len(drama_list) == len(vod_type)
 
     if warm_up and storage:
-        dataset = load_dataset(fpath) or \
-            pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 'short_comment', 'creator', 'stars'])
+        dataset = load_dataset(fpath) 
+        if dataset is None:
+            dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 'short_comment', 'creator', 'stars'])
     else:
         dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 'short_comment', 'creator', 'stars'])
     
@@ -176,7 +177,6 @@ def crawler(
                             and re.search('大陆|香港|台湾', df_text)
                         
                         _test = de_parent.find_elements(By.XPATH, f"//span[@class='label']")[0]
-                        print(_test.text)
                         if re.findall('\[(.*?)\]', _test.text)[0] == vd:
                             condition = True
                     except:
