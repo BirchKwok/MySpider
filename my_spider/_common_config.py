@@ -2,8 +2,9 @@ import os
 import time
 import json
 import re
+import copy
 from io import BytesIO
-from fuzzywuzzy import fuzz
+import pandas as pd
 
 import requests
 from fake_useragent import UserAgent

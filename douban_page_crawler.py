@@ -3,6 +3,10 @@
 from my_spider import *
 from my_spider._common_config import *
 
+import warnings
+warnings.filterwarnings('ignore')
+
+
 def maximize_window(driver, maximize=True, open_on_top_screen=True):
     if open_on_top_screen:
         driver.set_window_position(0, -1000)
@@ -63,10 +67,9 @@ def dump2file(d, fp, encoding='utf-8'):
         json.dump(d, f, ensure_ascii=False)
 
 
-def load_json(fp, encoding='utf-8'):
+def load_dataset(fp, encoding='utf-8'):
     try:
-        with open(fp, 'r', encoding=encoding) as f:
-            return json.load(f)
+        return pd.read_csv(fp, sep=',', encoding=encoding)
     except:
         return 
 
@@ -77,8 +80,7 @@ def crawler(
     maximize=True, # 最大化浏览器窗口
     open_on_top_screen=True,  # 是否在第二屏幕打开
     storage=True, # 是否需要存储到文件
-    rating_json_path='rating.json',  # 评分存储路径
-    short_comment_json_path='short_comment.json',  # 短评存储路径
+    fpath='rating.csv',  # 存储路径
     warm_up=False, # 是否追加到文件最后
     use_manager=True, # 是否使用浏览器driver管理器
     page_load_strategy='eager', # driver加载网页策略
@@ -88,11 +90,10 @@ def crawler(
     douban_url = 'https://movie.douban.com/'
 
     if warm_up and storage:
-        rating_dict = load_json(rating_json_path) or {}
-        short_comment_dict = load_json(short_comment_json_path) or {}
+        dataset = load_dataset(fpath) or \
+            pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 'short_comment', 'creator', 'stars'])
     else:
-        rating_dict = {}
-        short_comment_dict = {}
+        dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 'short_comment', 'creator', 'stars'])
     
     def getinto():
         driver = get_driver('Chrome', page_load_strategy=page_load_strategy, use_manager=use_manager)
@@ -106,8 +107,11 @@ def crawler(
 
     for d in tqdm(drama_list):
         d = d.strip()
-        if d in rating_dict.keys():
+        
+        if d in dataset['given_drama_name']:
             continue
+
+        _series = {'create_time':'', 'given_drama_name':d, 'douban_drama_name':'', 'rating':'', 'short_comment':'', 'creator':'', 'stars':0}
 
         if new_window_each_session:
             driver = getinto()
@@ -157,10 +161,9 @@ def crawler(
                     )
 
                     if rate_element is not None:
-
-                        rating_dict[d] = {de_text:rate_element.text}
+                        _series.update({'douban_drama_name':de_text, 'rating':rate_element.text})
                     else:
-                        rating_dict[d] = {de_text:None}
+                        _series.update({'douban_drama_name':de_text, 'rating':None})
 
                     de.click() # 点击进入详情页
 
@@ -171,9 +174,6 @@ def crawler(
                         click=True
                     )
 
-                    # 采集所有的短评
-                    short_coment = []
-
                     page_cnt = 0
                     while page_cnt <= page_limit:
                         time.sleep(np.random.randint(1, 4)) # 随机休眠
@@ -182,10 +182,48 @@ def crawler(
                                                 page_path=f"//span[@class='short']",
                                                 index='all'
                                             )
+                        
                         if current_elements == [None]:
                             break
+                        
+                        # 获取评论发表时间
+                        current_elements_create_time = wait_for_show_up(
+                                                driver, by_method=By.XPATH, 
+                                                page_path=f"//span[@class='comment-time ']",
+                                                index='all', duration=0
+                                            )
+                        
+                        # 获取评论人昵称
+                        current_elements_creator = wait_for_show_up(
+                                                driver, by_method=By.XPATH, 
+                                                page_path=f"//span[@class='comment-info']/a",
+                                                index='all', duration=0
+                                            )
+                        
+                        comment_infoes = wait_for_show_up(
+                                    driver, by_method=By.XPATH, 
+                                    page_path=f"//span[@class='comment-info']",
+                                    index='all'
+                                )
+                        
+                        stars_with_creator = []
+                        for creator_e, cin in zip(current_elements_creator, comment_infoes):
+                            creator = creator_e.text
+                            # 获取打星数
+                            try:
+                                stars = cin.find_element(By.XPATH, f"//a[text()='{creator}']/following-sibling::span[contains(@class, 'allstar')]")
+                                stars = stars.get_attribute("class")
+                                stars = int(re.findall('allstar(.*?) rating', stars)[0]) // 10
+                            except:
+                                stars = 0 # 未打星
+                            
+                            stars_with_creator.append((creator, stars))
 
-                        short_coment.extend([i.text for i in current_elements])
+                        for ce, cet, (ctr, ss) in zip(current_elements, current_elements_create_time, stars_with_creator):
+                            new_series = copy.deepcopy(_series)
+                            new_series.update({'create_time':cet.text.strip(), 'short_comment':ce.text, 'creator':ctr, 'stars':ss})
+                            dataset = dataset.append(new_series, ignore_index=True)
+
                         # 点击后页
                         if wait_for_show_up(
                                 driver, by_method=By.XPATH, 
@@ -195,12 +233,10 @@ def crawler(
                             page_cnt += 1
                         else:
                             break
-                    
-                    short_comment_dict[d] = {de_text:short_coment}
                     break
 
             if storage:
-                dump2file(rating_dict, rating_json_path), dump2file(short_comment_dict, short_comment_json_path)
+                dataset.to_csv(fpath, sep=',', encoding='utf-8', index=False)
 
             if new_window_each_session:
                 driver.quit()
@@ -213,11 +249,12 @@ def crawler(
     if not new_window_each_session:
         driver.quit()
 
-    return rating_dict, short_comment_dict
+    return dataset
 
 
 if __name__ == '__main__':
-    drama_list = ['美丽战场', '大侠霍元甲', '射雕英雄传', '神雕侠侣']
+    # drama_list = ['美丽战场', '大侠霍元甲', '射雕英雄传', '神雕侠侣']
+    drama_list = ['美丽战场']
     page_limit = 9 # 目前豆瓣限制游客只能看前十页短评
 
-    print(crawler(drama_list, page_limit=page_limit, storage=False))  # 不需要存储进硬盘
+    print(crawler(drama_list, page_limit=page_limit, storage=True))  # 不需要存储进硬盘
