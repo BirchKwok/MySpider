@@ -103,10 +103,10 @@ def crawler(
         dataset = load_dataset(fpath) 
         if dataset is None:
             dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 
-                                            'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment'])
+                                            'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations'])
     else:
         dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 
-                                        'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment'])
+                                        'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations'])
     
     def getinto(to_login=login):
         driver = get_driver(browser_name, page_load_strategy=page_load_strategy, use_manager=use_manager, headless=headless)
@@ -317,7 +317,7 @@ def crawler(
                             new_ds = pd.DataFrame(data={
                                 'create_time':create_time, 'given_drama_name':[d for i in create_time], 'douban_drama_name':[de_text for i in create_time], 
                                 'rating':[rating for i in create_time], 'short_comment':comments, 'creator':userid, 'stars':stars, 
-                                'watch_status':watch_status, 'stars_comment':stars_comment})
+                                'watch_status':watch_status, 'stars_comment':stars_comment, 'locations':locations})
                             
                             dataset = pd.concat((dataset, new_ds), ignore_index=True)
 
@@ -334,7 +334,9 @@ def crawler(
                         if page_cnt == 0 and iw_name == '看过':
                             new_ds = pd.DataFrame(data={
                                 'create_time':None, 'given_drama_name':d, 'douban_drama_name':de_text, 
-                                'rating':rating, 'short_comment':'', 'creator':'', 'stars':'', 'watch_status':'', 'stars_comment':'未打星'}, index=[0])
+                                'rating':rating, 'short_comment':'', 'creator':'', 'stars':'', 'watch_status':'', 'stars_comment':'未打星',
+                                'locations':''
+                                }, index=[0])
                             
                             dataset = pd.concat((dataset, new_ds), ignore_index=True)
                     

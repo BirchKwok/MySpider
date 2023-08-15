@@ -40,7 +40,6 @@ def get_driver(
         if executable_path is not None:
             path = executable_path
 
-        print(path)
         service = service_cls(executable_path=path)
         driver = driver_cls(service=service, options=options)
         
