@@ -7,8 +7,8 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-FILE_PATH = os.path.dirname(__file__)
-CONFIG_PATH = os.path.join(FILE_PATH, 'config.json')
+FILE_PATH = Path(__file__)
+CONFIG_PATH = Path.joinpath(FILE_PATH, 'config.json')
 
 
 def maximize_window(driver, maximize=True, open_on_top_screen=True):
@@ -180,7 +180,7 @@ def crawler(
                         condition = (d in [i.strip() for i in de_text.split(' ')] or d in [i.strip() for i in df_text.split(' / ')]) \
                             and re.search('大陆|香港|台湾', df_text)
                         
-                        _test = de_parent.find_elements(By.XPATH, f"//span[@class='label']")[0]
+                        _test = de_parent.find_elements(By.XPATH, f".//span[@class='label']")[0]
                         if re.findall('\[(.*?)\]', _test.text)[0] == vd:
                             condition = True and condition
                     except:
@@ -342,13 +342,13 @@ def crawler(
             if storage:
                 dataset.to_csv(fpath, sep=',', encoding='utf-8', index=False)
 
-            if new_window_each_session:
-                driver.quit()
-            else:
-                wait_for_show_up(
-                    driver, by_method=By.XPATH, 
-                    page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
-                ).clear() # 清空搜索框
+        if new_window_each_session:
+            driver.quit()
+        else:
+            wait_for_show_up(
+                driver, by_method=By.XPATH, 
+                page_path="//input[@id='inp-query' and @name='search_text' and @placeholder='搜索电影、电视剧、综艺、影人']", 
+            ).clear() # 清空搜索框
 
     if not new_window_each_session:
         driver.quit()

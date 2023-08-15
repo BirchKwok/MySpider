@@ -1,5 +1,8 @@
 from ._common_config import *
 
+FILE_PATH = Path(__file__)
+PARENT_PATH = FILE_PATH.parent.parent
+
 
 def get_driver(
         name='Chrome', 
@@ -28,11 +31,12 @@ def get_driver(
             use_manager = False
 
     if not use_manager:
-        path = ('msedgedriver', 'chromedriver')[name == 'Chrome']
+        path = (Path.joinpath(PARENT_PATH, 'msedgedriver'), Path.joinpath(PARENT_PATH, 'chromedriver'))[name == 'Chrome']
             # 如果指定可执行文件路径，就覆盖path变量
         if executable_path is not None:
             path = executable_path
 
+        print(path)
         service = service_cls(executable_path=path)
         driver = driver_cls(service=service, options=options)
         
