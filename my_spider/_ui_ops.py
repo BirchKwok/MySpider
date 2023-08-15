@@ -5,15 +5,21 @@ def get_driver(
         name='Chrome', 
         page_load_strategy='normal', 
         use_manager=True,
-        executable_path=None
+        executable_path=None,
+        headless=False
 ):
     assert name in ['Chrome', 'Edge']
+    if name != 'Chrome' and headless:
+        print("headless模式仅支持chrome")
+
     options = (edge_options(), chrome_options())[name == 'Chrome']
     driver_cls = (webdriver.Edge, webdriver.Chrome)[name == 'Chrome']
     service_cls = (EdgeService, ChromeService)[name == 'Chrome']
     manager_cls = (EdgeChromiumDriverManager(), ChromeDriverManager())[name == 'Chrome']
 
     options.page_load_strategy = page_load_strategy
+    if headless and name == 'Chrome':
+        options.add_argument("--headless=new")
     if use_manager:
         try:
             service = service_cls(manager_cls.install())
