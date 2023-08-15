@@ -26,7 +26,7 @@ def json_load(fp):
         return json.load(f)
 
 
-def login(driver):
+def login(driver, account_id=None, passwd=None):
     # 点击顶栏
     wait_for_show_up(
         driver, by_method=By.XPATH, 
@@ -46,7 +46,7 @@ def login(driver):
         driver, by_method=By.XPATH, 
         page_path='//input[@id="username" and @class="account-form-input" and @placeholder="手机号 / 邮箱" and @tabindex="1"]',
         click=True,
-        send_keys=json_load(CONFIG_PATH)['douban_account']
+        send_keys=json_load(CONFIG_PATH)['douban_account'] if account_id is None else account_id
     )
 
     # 填入密码
@@ -54,7 +54,7 @@ def login(driver):
         driver, by_method=By.XPATH, 
         page_path='//input[@id="password" and @class="account-form-input password" and @placeholder="密码" and @tabindex="3"]',
         click=True,
-        send_keys=json_load(CONFIG_PATH)['douban_passwd']
+        send_keys=json_load(CONFIG_PATH)['douban_passwd'] if passwd is None else passwd
     )
 
     # 点击登录
@@ -89,7 +89,8 @@ def crawler(
     page_load_strategy='eager', # driver加载网页策略
     new_window_each_session=False,  # 是否每个会话都新开一个浏览器窗口
     headless=True,  # 是否进入后台运行
-    login=False
+    login=False,  # 是否需要登录
+    browser_name='Chrome' # 使用浏览器驱动名， 枚举值: Chrome、Edge 
 ):
     """主程序"""
     douban_url = 'https://movie.douban.com/'
@@ -108,7 +109,7 @@ def crawler(
                                         'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment'])
     
     def getinto(to_login=login):
-        driver = get_driver('Chrome', page_load_strategy=page_load_strategy, use_manager=use_manager, headless=headless)
+        driver = get_driver(browser_name, page_load_strategy=page_load_strategy, use_manager=use_manager, headless=headless)
         if maximize:
             driver = maximize_window(driver, open_on_top_screen=open_on_top_screen)
         driver.get(douban_url)
