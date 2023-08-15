@@ -133,8 +133,6 @@ def crawler(
         if new_window_each_session:
             driver = getinto(False)
 
-        time.sleep(np.random.randint(1, 3)) # 随机休眠
-
         # 输入搜索框
         wait_for_show_up(
             driver, by_method=By.XPATH, 
@@ -171,7 +169,6 @@ def crawler(
         
         if drama_es != [None] and dramas_from != [None]:
             for (de_parent, df, de) in zip(drama_es, dramas_from, drama_name):
-                time.sleep(np.random.randint(1, 4)) # 随机休眠
                 de_text = de.text
                 df_text = df.text
                 
@@ -196,7 +193,10 @@ def crawler(
                         page_path="//span[@class='rating_nums']", 
                     )
 
-                    rating = rate_element.text  # 总体评分
+                    try:
+                        rating = rate_element.text  # 总体评分
+                    except:
+                        rating = None
 
                     de.click() # 点击进入详情页
 
@@ -330,7 +330,7 @@ def crawler(
                             else:
                                 break
                         
-                        if page_cnt == 0:
+                        if page_cnt == 0 and iw_name == '看过':
                             new_ds = pd.DataFrame(data={
                                 'create_time':None, 'given_drama_name':d, 'douban_drama_name':de_text, 
                                 'rating':rating, 'short_comment':'', 'creator':'', 'stars':'', 'watch_status':'', 'stars_comment':'未打星'}, index=[0])
