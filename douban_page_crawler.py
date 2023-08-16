@@ -93,7 +93,7 @@ def crawler(
     headless=True,  # 是否进入后台运行
     login=False,  # 是否需要登录
     browser_name='Chrome', # 使用浏览器驱动名， 枚举值: Chrome、Edge 
-    ip=None  # 代理ip
+    ip=None  # 代理ip和端口  形如 xxx.xxx.xxx.xxx:xxx
 ):
     """主程序"""
     douban_url = 'https://movie.douban.com/'
