@@ -4,12 +4,29 @@ FILE_PATH = Path(__file__)
 PARENT_PATH = FILE_PATH.parent.parent
 
 
+# ip代理池
+def get_proxy_ip(ip_fp=Path.joinpath(PARENT_PATH, 'ip.txt'), invalid_ip=[]):
+    with open(ip_fp, 'r', encoding='utf-8') as f:
+        d = list(set(f.readlines()))
+    
+    if len(invalid_ip) < len(d):
+        ip = random.choice(d)
+        
+        while ip in invalid_ip:
+            ip = random.choice(d)
+        
+        return ip
+    else: 
+        return False
+
+
 def get_driver(
-        name='Chrome', 
-        page_load_strategy='normal', 
-        use_manager=True,
-        executable_path=None,
-        headless=False
+    name='Chrome', 
+    page_load_strategy='normal', 
+    use_manager=True,
+    executable_path=None,
+    headless=False,
+    ip=None
 ):
     assert name in ['Chrome', 'Edge']
 
@@ -26,6 +43,9 @@ def get_driver(
         options.use_chromium = True
         options.add_argument("--headless=new")
         options.add_argument("disable-gpu")
+    
+    if ip is not None and isinstance(ip, str):
+        options.add_argument("--proxy-server=http://"+ip)
 
     if use_manager:
         try:

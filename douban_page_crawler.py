@@ -10,6 +10,8 @@ warnings.filterwarnings('ignore')
 FILE_PATH = Path(__file__)
 CONFIG_PATH = Path.joinpath(FILE_PATH, 'config.json')
 
+invalid_ip= []
+
 
 def maximize_window(driver, maximize=True, open_on_top_screen=True):
     if open_on_top_screen:
@@ -90,7 +92,8 @@ def crawler(
     new_window_each_session=False,  # 是否每个会话都新开一个浏览器窗口
     headless=True,  # 是否进入后台运行
     login=False,  # 是否需要登录
-    browser_name='Chrome' # 使用浏览器驱动名， 枚举值: Chrome、Edge 
+    browser_name='Chrome', # 使用浏览器驱动名， 枚举值: Chrome、Edge 
+    ip=None  # 代理ip
 ):
     """主程序"""
     douban_url = 'https://movie.douban.com/'
@@ -109,7 +112,7 @@ def crawler(
                                         'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations'])
     
     def getinto(to_login=login):
-        driver = get_driver(browser_name, page_load_strategy=page_load_strategy, use_manager=use_manager, headless=headless)
+        driver = get_driver(browser_name, page_load_strategy=page_load_strategy, use_manager=use_manager, headless=headless, ip=ip)
         if maximize:
             driver = maximize_window(driver, open_on_top_screen=open_on_top_screen)
         driver.get(douban_url)
@@ -118,7 +121,7 @@ def crawler(
         return driver
 
     if not new_window_each_session:
-        driver = getinto()
+        driver = getinto(login)
 
     if vod_type is not None:
         iter_list = [(i, j) for i, j in zip(drama_list, vod_type)]
@@ -132,7 +135,7 @@ def crawler(
             continue
 
         if new_window_each_session:
-            driver = getinto(False)
+            driver = getinto(login)
 
         # 输入搜索框
         wait_for_show_up(
@@ -170,6 +173,7 @@ def crawler(
         
         if drama_es != [None] and dramas_from != [None]:
             for (de_parent, df, de) in zip(drama_es, dramas_from, drama_name):
+
                 de_text = de.text
                 df_text = df.text
                 
