@@ -1,4 +1,4 @@
-# 爬取给定影视列表的豆瓣评分和短评
+# 爬取给定影视列表的豆瓣用户信息
 
 from my_spider import *
 from my_spider._common_config import *
@@ -373,14 +373,12 @@ if __name__ == '__main__':
     while True:
         ip = get_proxy_ip(invalid_ip=invalid_ip)
         if ip:
+            invalid_ip.append(ip)
             try:
                 dataset = crawler(drama_list, vod_type=['剧集'], page_limit=page_limit, storage=False, 
-                                  use_manager=False, headless=True, browser_name='Chrome',ip=ip)
+                                  use_manager=True, headless=True, browser_name='Chrome',ip=ip)
                 break
             except:
-                print('invalid ip: ', ip)
-
-                invalid_ip.append(ip)
                 continue
         else:
             break

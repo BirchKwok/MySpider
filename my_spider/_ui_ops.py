@@ -4,22 +4,6 @@ FILE_PATH = Path(__file__)
 PARENT_PATH = FILE_PATH.parent.parent
 
 
-# ip代理池
-def get_proxy_ip(ip_fp=Path.joinpath(PARENT_PATH, 'ip.txt'), invalid_ip=[]):
-    with open(ip_fp, 'r', encoding='utf-8') as f:
-        d = list(set(f.readlines()))
-    
-    if len(invalid_ip) < len(d):
-        ip = random.choice(d)
-        
-        while ip in invalid_ip:
-            ip = random.choice(d)
-        
-        return ip
-    else: 
-        return False
-
-
 def get_driver(
     name='Chrome', 
     page_load_strategy='normal', 
