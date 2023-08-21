@@ -18,13 +18,14 @@ class BaseOps:
             raise ValueError("cookies必须为dict或者str类型。")
 
 
-class Getter(BaseOps):
-    def get(self, url, browser_name=None, domain_name='', cookies=None, **request_kwargs):
-        self.response = requests.get(url, 
-            headers=get_random_headers(), 
+class Requester(BaseOps):
+    def get(self, url, browser_name=None, domain_name='', cookies=None, headers=None, **get_kwargs):
+        self.response = requests.get(
+            url, 
+            headers=get_random_headers() if headers is None else headers, 
             cookies=get_cookies(browser_name=browser_name, domain_name=domain_name) \
                 if browser_name is not None else cookies, 
-            **request_kwargs
+            **get_kwargs
         )
 
         if int(self.response.status_code) != 200:
@@ -34,6 +35,22 @@ class Getter(BaseOps):
         
         return self
     
+    def post(self, url, data=None, browser_name=None, domain_name='', cookies=None, headers=None, **post_kwargs):
+        self.response = requests.post(
+            url, 
+            data=data,
+            headers=get_random_headers() if headers is None else headers, 
+            cookies=get_cookies(browser_name=browser_name, domain_name=domain_name) \
+                if browser_name is not None else cookies, 
+            **post_kwargs
+        )
+
+        if int(self.response.status_code) != 200:
+            print("status_code:", self.response.status_code)
+        
+        self.status_code = self.response.status_code
+        
+        return self
     @property
     def soup(self):
         text = self.response.text

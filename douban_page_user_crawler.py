@@ -8,7 +8,7 @@ warnings.filterwarnings('ignore')
 
 
 FILE_PATH = Path(__file__)
-CONFIG_PATH = Path.joinpath(FILE_PATH, 'config.json')
+CONFIG_PATH = Path.joinpath(FILE_PATH.parent, 'config.json')
 
 
 def maximize_window(driver, maximize=True, open_on_top_screen=True):
@@ -65,7 +65,7 @@ def login(driver, account_id=None, passwd=None):
     )
 
     # 休眠10秒钟等待手动验证
-    time.sleep(10)
+    time.sleep(40)
     return driver
 
 
@@ -89,7 +89,7 @@ def crawler(
     page_load_strategy='eager', # driver加载网页策略
     new_window_each_session=False,  # 是否每个会话都新开一个浏览器窗口
     headless=True,  # 是否进入后台运行
-    login=False,  # 是否需要登录
+    to_login=False,  # 是否需要登录
     browser_name='Chrome', # 使用浏览器驱动名， 枚举值: Chrome、Edge 
     ip=None  # 代理ip和端口  形如 xxx.xxx.xxx.xxx:xxx
 ):
@@ -104,12 +104,15 @@ def crawler(
         dataset = load_dataset(fpath) 
         if dataset is None:
             dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 
-                                            'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations'])
+                                            'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations',
+                                            'user_self_named_id', 'user_join_date', 'user_location'
+                                            ])
     else:
         dataset = pd.DataFrame(columns=['create_time', 'given_drama_name', 'douban_drama_name', 'rating', 
-                                        'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations'])
+                                        'short_comment', 'creator', 'stars', 'watch_status', 'stars_comment', 'locations',
+                                        'user_self_named_id', 'user_join_date', 'user_location'])
     
-    def getinto(to_login=login):
+    def getinto(to_login=to_login):
         driver = get_driver(browser_name, page_load_strategy=page_load_strategy, use_manager=use_manager, headless=headless, ip=ip)
         if maximize:
             driver = maximize_window(driver, open_on_top_screen=open_on_top_screen)
@@ -119,7 +122,7 @@ def crawler(
         return driver
 
     if not new_window_each_session:
-        driver = getinto(login)
+        driver = getinto(to_login)
 
     if vod_type is not None:
         iter_list = [(i, j) for i, j in zip(drama_list, vod_type)]
@@ -133,7 +136,7 @@ def crawler(
             continue
 
         if new_window_each_session:
-            driver = getinto(login)
+            driver = getinto(to_login)
 
         # 输入搜索框
         wait_for_show_up(
@@ -285,13 +288,22 @@ def crawler(
                             locations = []
                             watch_status = []
                             comments = []
+                            user_self_named_id = []
+                            user_join_date = []
+                            user_location = []
+                            
+                            # 将遍历的元素存放起来
+                            user_url_list = []
 
                             for info_e, short_comment in zip(comment_infoes, current_elements):
                                 # 获取评论人和发表时间、是否看过
-                                creator = info_e.find_element(By.XPATH, f"./a").text
+                                creator = info_e.find_element(By.XPATH, f"./a")
+                                user_url_list.append(creator.get_attribute('href'))
+                                creator_text = creator.text
                                 ct = info_e.find_element(By.XPATH, f".//span[@class='comment-time ']").text
                                 ct = ct.strip()
-                                userid.append(creator), create_time.append(ct)
+
+                                userid.append(creator_text), create_time.append(ct)
 
                                 watch_status.append(iw_name)
 
@@ -315,14 +327,57 @@ def crawler(
                                 # 获取短评
                                 comments.append(short_comment.text)
 
+                            # 存储原始窗口的 ID
+                            original_window = driver.current_window_handle
+                            # 检查一下，我们还没有打开其他的窗口
+                            assert len(driver.window_handles) == 1
+
+                            for user_url in user_url_list:
+                                time.sleep(random.randint(1, 4))  # 随机休眠
+                                driver.switch_to.new_window('tab')
+                                # 获取评论人信息
+                                driver.get(user_url)
+
+                                # 循环执行，直到找到一个新的窗口句柄
+                                for window_handle in driver.window_handles:
+                                    
+                                    if window_handle != original_window:
+                                        driver.switch_to.window(window_handle)
+                                        break
+
+                                user_config_text = wait_for_show_up(
+                                                    driver, by_method=By.XPATH, 
+                                                    page_path=f"//div[@class='user-info']/div[@class='pl']",
+                                                    index='all'
+                                                )[:2]
+                                
+                                print(user_config_text)
+                                user_self_named_id.append(user_config_text[0].text.strip())
+                                user_join_date.append(user_config_text[1].text.strip().split('加入')[0])
+                                user_config_location = wait_for_show_up(
+                                                    driver, by_method=By.XPATH, 
+                                                    page_path=f"//div[@class='user-info']/div[@class='pl']/span",
+                                                    index=0
+                                                )
+                                
+                                user_location.append(user_config_location.split('IP属地：')[1])
+
+                                #关闭标签页或窗口
+                                driver.close()
+
+                                #切回到之前的标签页或窗口
+                                driver.switch_to.window(original_window)
 
                             new_ds = pd.DataFrame(data={
                                 'create_time':create_time, 'given_drama_name':[d for i in create_time], 'douban_drama_name':[de_text for i in create_time], 
                                 'rating':[rating for i in create_time], 'short_comment':comments, 'creator':userid, 'stars':stars, 
-                                'watch_status':watch_status, 'stars_comment':stars_comment, 'locations':locations})
+                                'watch_status':watch_status, 'stars_comment':stars_comment, 'locations':locations, 
+                                'user_self_named_id':user_self_named_id,
+                                'user_join_date':user_join_date, 'user_location':user_location
+                                })
                             
                             dataset = pd.concat((dataset, new_ds), ignore_index=True)
-
+                            print(dataset)
                             # 点击后页
                             if wait_for_show_up(
                                     driver, by_method=By.XPATH, 
@@ -337,7 +392,8 @@ def crawler(
                             new_ds = pd.DataFrame(data={
                                 'create_time':None, 'given_drama_name':d, 'douban_drama_name':de_text, 
                                 'rating':rating, 'short_comment':'', 'creator':'', 'stars':'', 'watch_status':'', 'stars_comment':'未打星',
-                                'locations':''
+                                'locations':'', 'user_self_named_id':'',
+                                'user_join_date':'', 'user_location':''
                                 }, index=[0])
                             
                             dataset = pd.concat((dataset, new_ds), ignore_index=True)
@@ -366,21 +422,30 @@ if __name__ == '__main__':
 
     # drama_list = ['美丽战场', '大侠霍元甲', '射雕英雄传', '神雕侠侣']
     drama_list = ['美丽战场']
-    page_limit = False # 目前豆瓣限制游客只能看前十页短评
+    page_limit = 1 # 目前豆瓣限制游客只能看前十页短评
 
     dataset = None
 
+    # ip = get_proxy_ip(invalid_ip=invalid_ip, proxy_type='https')
+
+    # dataset = crawler(drama_list, vod_type=['剧集'], page_limit=page_limit, storage=False, 
+    #                               use_manager=False, headless=False, browser_name='Chrome', to_login=True, ip=ip)
+
     while True:
-        ip = get_proxy_ip(invalid_ip=invalid_ip)
+        ip = get_proxy_ip(invalid_ip=invalid_ip, proxy_type='https')
         if ip:
-            invalid_ip.append(ip)
+            print("current ip: ", ip)
             try:
                 dataset = crawler(drama_list, vod_type=['剧集'], page_limit=page_limit, storage=False, 
-                                  use_manager=True, headless=True, browser_name='Chrome',ip=ip)
+                                  use_manager=False, headless=False, browser_name='Chrome',ip=ip, to_login=True)
                 break
             except:
+                print('invalid.')
+
+                invalid_ip.append(ip)
                 continue
         else:
             break
     
     print(dataset)
+

@@ -7,7 +7,9 @@ from datetime import datetime
 from pathlib import Path
 from io import BytesIO
 import requests
-from functools import lru_cache
+import asyncio
+from functools import wraps
+from typing import Sized
 
 import pandas as pd
 from fake_useragent import UserAgent
@@ -34,3 +36,4 @@ from tqdm.auto import tqdm
 import numpy as np
 
 import browser_cookie3
+import aiohttp
